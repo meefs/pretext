@@ -1,0 +1,16 @@
+{
+  "name": "text-metrics",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "oxlint": "^1.51.0",
+    "tsgolint": "^0.0.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "check": "tsc && oxlint src",
+    "serve": "bun --hot serve.ts"
+  }
+}
