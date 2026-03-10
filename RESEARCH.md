@@ -694,6 +694,41 @@ Browser/corpus verification after adding SHY support stayed stable:
   - Hebrew `61/61`
   - Thai `59/61`
 
+## Mixed app-text canary and URL-like runs
+
+The book/prose corpora were healthy enough that they stopped being a good steering wheel for actual
+app text. We added a synthetic mixed corpus with:
+- URLs and query strings
+- curly and ASCII quotes
+- mixed RTL/LTR runs
+- emoji ZWJ sequences
+- `NBSP` / `NNBSP` / `WJ` / `ZWSP`
+- manual `SHY`
+- CJK + ASCII punctuation
+
+The first real miss at `600px` was product-shaped, not literary:
+- browser: exact height `620px`
+- engine: `590px`
+- first local break class: URL/query-string handling around
+  `https://example.com/reports/q3?lang=ar&mode=full`
+
+What helped:
+- treat URL-like runs (`scheme:` + `//...`, or `www.` starts) as one breakable preprocessing unit
+- keep the whole URL/path/query string together instead of letting `/`, `?`, `=`, `&` turn into many
+  eager word-boundary break opportunities
+
+That change was a real keep:
+- mixed corpus sentinel widths went exact again at `300`, `600`, and `800`
+- mixed coarse sweep (`300..900`, step `10`) improved to `54/61 exact`
+- Safari accuracy stayed `7680/7680`
+- Firefox accuracy stayed `7680/7680`
+
+The mixed corpus is now useful precisely because it still has a small field left:
+- `-30px`: `450`, `490`, `510`
+- `+30px`: `410`, `580`, `610`, `620`
+
+So it should stay in the loop as the product-shaped canary, not just as another demo page.
+
 ## Thai corpus note
 
 Adding a Thai prose corpus (`นิทานเวตาล/เรื่องที่ 1`) exposed a different class than the Arabic/Hebrew work:

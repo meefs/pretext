@@ -56,6 +56,8 @@ Internal notes for contributors and agents. Use `README.md` as the public source
 - The Arabic corpus text has already been cleaned for quote-before-punctuation spacing artifacts like `" ،`, `" .`, and `" ؟`, plus a few obvious `space + punctuation` typos (`هيهات !`, `دجاك ؟!`, `القيان :`). Treat those as corpus hygiene, not engine behavior.
 - The repeated Arabic fine-width miss around `قوله:"...` was also a source-text issue; normalizing that one occurrence to `قوله: “...` removed several widths without touching the engine.
 - Thai prose can expose ASCII quote behavior like `ทูลว่า "พระองค์...`; treating `"` as contextual quote glue in preprocessing helps there without needing a Thai-specific rule.
+- Mixed app text is now a first-class canary. Use it to catch product-shaped classes like URL/query-string wrapping, emoji ZWJ runs, and mixed-script punctuation before tuning another book corpus.
+- URL-like runs such as `https://...` / `www...` are currently merged into one breakable preprocessing unit. This is intentionally narrow and exists to stop path/query punctuation from creating obviously bad mid-URL line breaks.
 - Current line-fit tolerance is `0.005` for Chromium/Gecko and `1/64` for Safari/WebKit. That bump was justified by the remaining Arabic fine-width field and did not move the solved browser corpus or Gatsby coarse canary.
 
 ### Open questions

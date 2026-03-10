@@ -204,6 +204,17 @@ describe('prepare invariants', () => {
     expect(prepared.segments).toEqual(['said', ' ', '"hello"', ' ', 'there'])
   })
 
+  test('keeps URL-like runs together as one breakable segment', () => {
+    const prepared = prepareWithSegments('see https://example.com/reports/q3?lang=ar&mode=full now', FONT)
+    expect(prepared.segments).toEqual([
+      'see',
+      ' ',
+      'https://example.com/reports/q3?lang=ar&mode=full',
+      ' ',
+      'now',
+    ])
+  })
+
   test('does not attach opening punctuation to following whitespace', () => {
     const prepared = prepareWithSegments('“ hello', FONT)
     expect(prepared.segments).toEqual(['“', ' ', 'hello'])

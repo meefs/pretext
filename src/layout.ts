@@ -615,6 +615,65 @@ function isCollapsibleSpaceKind(kind: SegmentBreakKind): boolean {
   return kind === 'space'
 }
 
+const urlSchemeSegmentRe = /^[A-Za-z][A-Za-z0-9+.-]*:$/
+
+function isUrlLikeRunStart(segmentation: MergedSegmentation, index: number): boolean {
+  const text = segmentation.texts[index]!
+  if (text.startsWith('www.')) return true
+  return (
+    urlSchemeSegmentRe.test(text) &&
+    index + 1 < segmentation.len &&
+    segmentation.kinds[index + 1] === 'text' &&
+    segmentation.texts[index + 1] === '//'
+  )
+}
+
+function mergeUrlLikeRuns(segmentation: MergedSegmentation): MergedSegmentation {
+  const texts = segmentation.texts.slice()
+  const isWordLike = segmentation.isWordLike.slice()
+  const kinds = segmentation.kinds.slice()
+  const starts = segmentation.starts.slice()
+
+  for (let i = 0; i < segmentation.len; i++) {
+    if (kinds[i] !== 'text' || !isUrlLikeRunStart(segmentation, i)) continue
+
+    let j = i + 1
+    while (j < segmentation.len && kinds[j] !== 'space' && kinds[j] !== 'zero-width-break') {
+      texts[i] += texts[j]!
+      isWordLike[i] = true
+      kinds[j] = 'text'
+      texts[j] = ''
+      j++
+    }
+  }
+
+  let compactLen = 0
+  for (let read = 0; read < texts.length; read++) {
+    const text = texts[read]!
+    if (text.length === 0) continue
+    if (compactLen !== read) {
+      texts[compactLen] = text
+      isWordLike[compactLen] = isWordLike[read]!
+      kinds[compactLen] = kinds[read]!
+      starts[compactLen] = starts[read]!
+    }
+    compactLen++
+  }
+
+  texts.length = compactLen
+  isWordLike.length = compactLen
+  kinds.length = compactLen
+  starts.length = compactLen
+
+  return {
+    len: compactLen,
+    texts,
+    isWordLike,
+    kinds,
+    starts,
+  }
+}
+
 function mergeGlueConnectedTextRuns(segmentation: MergedSegmentation): MergedSegmentation {
   const texts: string[] = []
   const isWordLike: boolean[] = []
@@ -790,20 +849,21 @@ function buildMergedSegmentation(normalized: string): MergedSegmentation {
     kinds: mergedKinds,
     starts: mergedStarts,
   })
+  const withMergedUrls = mergeUrlLikeRuns(compacted)
 
-  for (let i = 0; i < compacted.len - 1; i++) {
-    const split = splitLeadingSpaceAndMarks(compacted.texts[i]!)
+  for (let i = 0; i < withMergedUrls.len - 1; i++) {
+    const split = splitLeadingSpaceAndMarks(withMergedUrls.texts[i]!)
     if (split === null) continue
-    if (compacted.kinds[i] !== 'space' || compacted.kinds[i + 1] !== 'text' || !containsArabicScript(compacted.texts[i + 1]!)) continue
+    if (withMergedUrls.kinds[i] !== 'space' || withMergedUrls.kinds[i + 1] !== 'text' || !containsArabicScript(withMergedUrls.texts[i + 1]!)) continue
 
-    compacted.texts[i] = split.space
-    compacted.isWordLike[i] = false
-    compacted.kinds[i] = 'space'
-    compacted.texts[i + 1] = split.marks + compacted.texts[i + 1]!
-    compacted.starts[i + 1] = compacted.starts[i]! + split.space.length
+    withMergedUrls.texts[i] = split.space
+    withMergedUrls.isWordLike[i] = false
+    withMergedUrls.kinds[i] = 'space'
+    withMergedUrls.texts[i + 1] = split.marks + withMergedUrls.texts[i + 1]!
+    withMergedUrls.starts[i + 1] = withMergedUrls.starts[i]! + split.space.length
   }
 
-  return compacted
+  return withMergedUrls
 }
 
 function computeSegmentLevels(normalized: string, segStarts: number[]): Int8Array | null {

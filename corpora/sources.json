@@ -1,5 +1,23 @@
 [
   {
+    "id": "mixed-app-text",
+    "language": "mul",
+    "direction": "ltr",
+    "title": "Mixed app text",
+    "source_url": "synthetic://mixed-app-text",
+    "output": "corpora/mixed-app-text.txt",
+    "font_family": "\"Helvetica Neue\", Arial, \"Apple SD Gothic Neo\", \"Geeza Pro\", \"Kohinoor Devanagari\", \"Thonburi\", sans-serif",
+    "font_size_px": 18,
+    "line_height_px": 30,
+    "default_width": 600,
+    "min_width": 300,
+    "max_width": 900,
+    "characters": 1060,
+    "lines": 9,
+    "acquired_via": "synthetic",
+    "notes": "Synthetic mixed-script app-text stress corpus covering URLs, quotes, RTL runs, emoji ZWJ, hard spaces, word joiners, zero-width breaks, and soft hyphens."
+  },
+  {
     "id": "ko-unsu-joh-eun-nal",
     "language": "ko",
     "direction": "ltr",

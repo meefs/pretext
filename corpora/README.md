@@ -8,6 +8,11 @@ in so we have stable canaries when probing languages and punctuation systems
 
 Current bundle:
 
+- `mixed-app-text.txt`
+  - Language: mixed / app-style
+  - Source: synthetic corpus kept in-repo
+  - Acquisition: hand-curated stress text covering URLs, quote clusters, mixed RTL/LTR runs, emoji ZWJ, hard spaces, word joiners, zero-width breaks, and soft hyphens
+
 - `ko-unsu-joh-eun-nal.txt`
   - Language: Korean
   - Source: Hyun Jin-geon, `운수 좋은 날`

@@ -10,6 +10,7 @@ import arRisalatAlGhufranPart1 from '../corpora/ar-risalat-al-ghufran-part-1.txt
 import heMasaotBinyaminMetudela from '../corpora/he-masaot-binyamin-metudela.txt' with { type: 'text' }
 import hiEidgah from '../corpora/hi-eidgah.txt' with { type: 'text' }
 import koUnsuJohEunNal from '../corpora/ko-unsu-joh-eun-nal.txt' with { type: 'text' }
+import mixedAppText from '../corpora/mixed-app-text.txt' with { type: 'text' }
 import thNithanVetalStory1 from '../corpora/th-nithan-vetal-story-1.txt' with { type: 'text' }
 
 type CorpusMeta = {
@@ -966,6 +967,8 @@ async function loadText(meta: CorpusMeta): Promise<string> {
       return hiEidgah
     case 'ko-unsu-joh-eun-nal':
       return koUnsuJohEunNal
+    case 'mixed-app-text':
+      return mixedAppText
     case 'th-nithan-vetal-story-1':
       return thNithanVetalStory1
     default:
