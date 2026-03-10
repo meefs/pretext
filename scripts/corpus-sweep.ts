@@ -63,6 +63,8 @@ type SweepOptions = {
   output: string | null
   timeoutMs: number
   samples: number | null
+  font: string | null
+  lineHeight: number | null
 }
 
 function parseStringFlag(name: string): string | null {
@@ -74,6 +76,16 @@ function parseStringFlag(name: string): string | null {
 function parseNumberFlag(name: string, fallback: number): number {
   const raw = parseStringFlag(name)
   if (raw === null) return fallback
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Invalid value for --${name}: ${raw}`)
+  }
+  return parsed
+}
+
+function parseOptionalNumberFlag(name: string): number | null {
+  const raw = parseStringFlag(name)
+  if (raw === null) return null
   const parsed = Number.parseInt(raw, 10)
   if (!Number.isFinite(parsed)) {
     throw new Error(`Invalid value for --${name}: ${raw}`)
@@ -124,7 +136,20 @@ function parseOptions(): SweepOptions {
     output: parseStringFlag('output'),
     timeoutMs: parseNumberFlag('timeout', Number.parseInt(process.env['CORPUS_CHECK_TIMEOUT_MS'] ?? '180000', 10)),
     samples,
+    font: parseStringFlag('font'),
+    lineHeight: parseOptionalNumberFlag('lineHeight'),
   }
+}
+
+function appendOverrideParams(url: string, options: SweepOptions): string {
+  let nextUrl = url
+  if (options.font !== null) {
+    nextUrl += `&font=${encodeURIComponent(options.font)}`
+  }
+  if (options.lineHeight !== null) {
+    nextUrl += `&lineHeight=${options.lineHeight}`
+  }
+  return nextUrl
 }
 
 function getSweepWidths(meta: CorpusMeta, options: SweepOptions): number[] {
@@ -217,11 +242,12 @@ try {
       }
 
       const requestId = `${Date.now()}-${width}-${Math.random().toString(36).slice(2)}`
-      const url =
+      let url =
         `${baseUrl}?id=${encodeURIComponent(meta.id)}` +
         `&width=${width}` +
         `&report=1` +
         `&requestId=${encodeURIComponent(requestId)}`
+      url = appendOverrideParams(url, options)
 
       const report = await loadHashReport<CorpusReport>(session, url, requestId, options.browser, options.timeoutMs)
       if (report.status === 'error') {

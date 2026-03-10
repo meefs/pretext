@@ -176,6 +176,8 @@ const requestId = params.get('requestId') ?? undefined
 const requestedCorpusId = params.get('id')
 const requestedWidth = Number.parseInt(params.get('width') ?? '', 10)
 const diagnosticMode = params.get('diagnostic') ?? 'light'
+const requestedFont = params.get('font')
+const requestedLineHeight = Number.parseInt(params.get('lineHeight') ?? '', 10)
 
 const reportEl = document.createElement('pre')
 reportEl.id = 'corpus-report'
@@ -250,12 +252,18 @@ function publishNavigationReport(report: CorpusReport): void {
 }
 
 function buildFont(meta: CorpusMeta): string {
+  if (requestedFont !== null && requestedFont.length > 0) {
+    return requestedFont
+  }
   const size = meta.font_size_px ?? 18
   const family = meta.font_family ?? 'serif'
   return `${size}px ${family}`
 }
 
 function getLineHeight(meta: CorpusMeta): number {
+  if (Number.isFinite(requestedLineHeight) && requestedLineHeight > 0) {
+    return requestedLineHeight
+  }
   return meta.line_height_px ?? Math.round((meta.font_size_px ?? 18) * 1.6)
 }
 

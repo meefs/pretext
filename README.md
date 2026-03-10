@@ -100,6 +100,7 @@ bun run accuracy-check         # Chrome browser sweep
 bun run accuracy-check:safari  # Safari browser sweep
 bun run accuracy-check:firefox # Firefox browser sweep
 bun run benchmark-check        # Chrome benchmark snapshot (short corpus + long-form corpora)
+bun run corpus-font-matrix --id=ar-risalat-al-ghufran-part-1 --samples=5  # sampled cross-font corpus check
 ```
 
 Pages:
@@ -108,3 +109,4 @@ Pages:
 - `/benchmark.html` — performance comparison
 - `/bubbles.html` — bubble shrinkwrap demo
 - `/emoji-test.html` — canvas vs DOM emoji width sweep
+- `/corpus.html` — long-form corpora + diagnostics (`font=` / `lineHeight=` query params supported)

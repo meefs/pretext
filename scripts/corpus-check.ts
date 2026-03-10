@@ -15,6 +15,11 @@ type CorpusMeta = {
   default_width?: number
 }
 
+type CorpusOverrideOptions = {
+  font: string | null
+  lineHeight: number | null
+}
+
 type CorpusReport = {
   status: 'ready' | 'error'
   requestId?: string
@@ -123,6 +128,16 @@ function parseBrowser(value: string | null): BrowserKind {
   return browser
 }
 
+function parseOptionalNumberFlag(name: string): number | null {
+  const raw = parseStringFlag(name)
+  if (raw === null) return null
+  const parsed = Number.parseInt(raw, 10)
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Invalid value for --${name}: ${raw}`)
+  }
+  return parsed
+}
+
 function hasFlag(name: string): boolean {
   return process.argv.includes(`--${name}`)
 }
@@ -143,6 +158,17 @@ function getTargetWidths(meta: CorpusMeta): number[] {
   const max = meta.max_width ?? 900
   const preferred = [min, Math.max(min, Math.min(max, meta.default_width ?? 600)), max]
   return [...new Set(preferred)]
+}
+
+function appendOverrideParams(url: string, overrides: CorpusOverrideOptions): string {
+  let nextUrl = url
+  if (overrides.font !== null) {
+    nextUrl += `&font=${encodeURIComponent(overrides.font)}`
+  }
+  if (overrides.lineHeight !== null) {
+    nextUrl += `&lineHeight=${overrides.lineHeight}`
+  }
+  return nextUrl
 }
 
 function printReport(report: CorpusReport): void {
@@ -219,6 +245,10 @@ let serverProcess: ChildProcess | null = null
 const browser = parseBrowser(parseStringFlag('browser'))
 const port = parseNumberFlag('port', Number.parseInt(process.env['CORPUS_CHECK_PORT'] ?? '3210', 10))
 const timeoutMs = parseNumberFlag('timeout', Number.parseInt(process.env['CORPUS_CHECK_TIMEOUT_MS'] ?? '180000', 10))
+const overrideOptions: CorpusOverrideOptions = {
+  font: parseStringFlag('font'),
+  lineHeight: parseOptionalNumberFlag('lineHeight'),
+}
 const sources = await loadSources()
 const id = parseStringFlag('id')
 
@@ -242,12 +272,13 @@ try {
 
   for (const width of getTargetWidths(meta)) {
     const requestId = `${Date.now()}-${width}-${Math.random().toString(36).slice(2)}`
-    const url =
+    let url =
       `${baseUrl}?id=${encodeURIComponent(meta.id)}` +
       `&width=${width}` +
       `&report=1` +
       `&diagnostic=${diagnose ? 'full' : 'light'}` +
       `&requestId=${encodeURIComponent(requestId)}`
+    url = appendOverrideParams(url, overrideOptions)
 
     const report = await loadHashReport<CorpusReport>(session, url, requestId, browser, timeoutMs)
     printReport(report)

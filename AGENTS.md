@@ -9,6 +9,9 @@ Internal notes for contributors and agents. Use `README.md` as the public source
 - `bun test` — lightweight invariant tests against the shipped implementation
 - `bun run accuracy-check` / `:safari` / `:firefox` — browser accuracy sweeps
 - `bun run benchmark-check` / `:safari` — benchmark snapshot with both the short shared corpus and long-form corpus stress rows
+- `bun run corpus-check --id=... --font='20px ...' --lineHeight=32` — corpus spot check with optional font override
+- `bun run corpus-sweep --id=... --samples=9 --font='20px ...'` — sampled width sweep; use this before a dense sweep on large corpora
+- `bun run corpus-font-matrix --id=... --samples=5` — sampled cross-font check for one checked-in corpus
 - `bun run gatsby-check` / `:safari` — Gatsby canary diagnostics
 - `bun run gatsby-sweep --start=300 --end=900 --step=10` — fast Gatsby width sweep; add `--diagnose` to rerun mismatching widths through the slow checker
 - `bun run probe-check --text='...' --width=320 --font='20px ...' --dir=rtl --lang=ar` — isolate a single snippet in the real browser
@@ -58,6 +61,8 @@ Internal notes for contributors and agents. Use `README.md` as the public source
 - The repeated Arabic fine-width miss around `قوله:"...` was also a source-text issue; normalizing that one occurrence to `قوله: “...` removed several widths without touching the engine.
 - Thai prose can expose ASCII quote behavior like `ทูลว่า "พระองค์...`; treating `"` as contextual quote glue in preprocessing helps there without needing a Thai-specific rule.
 - Khmer anthology (`ប្រជុំរឿងព្រេងខ្មែរ/ភាគទី៧`, stories 1-10) is now a checked-in Southeast Asian stress canary. Keep the explicit zero-width separators from source cleanup; flattening them would destroy the useful break-opportunity signal.
+- `/corpus`, `corpus-check`, and `corpus-sweep` now accept `font` / `lineHeight` overrides. Use those before inventing a second page or checker when the question is “does this same corpus stay healthy under another font?”
+- The sampled Chrome font matrix stayed exact across the current Korean/Thai/Khmer/Hindi/Arabic/Hebrew corpora. Safari font-matrix automation is slower and noisier, so Chrome is the better first pass and Safari should be treated as follow-up smoke coverage.
 - Mixed app text is now a first-class canary. Use it to catch product-shaped classes like URL/query-string wrapping, emoji ZWJ runs, and mixed-script punctuation before tuning another book corpus.
 - URL-like runs such as `https://...` / `www...` are currently modeled as two breakable preprocessing units when a query exists: the path through the query introducer (`?`), then the query string. This is intentionally narrow and exists to stop obviously bad mid-path URL breaks without forcing the whole query string to fragment character-by-character.
 - Mixed app text also pulled in two more keep-worthy preprocessing rules: contextual escaped quote clusters like `\"word\"`, and numeric/time-range runs like `२४×७` / `7:00-9:00`.

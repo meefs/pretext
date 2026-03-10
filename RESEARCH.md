@@ -777,6 +777,34 @@ What we learned:
 One practical note:
 - the full `step=10` corpus sweep was much slower than the one-off checker, so `--samples=<n>` is the better first pass for large Southeast Asian corpora unless a width-by-width map is specifically needed
 
+## Sampled cross-font corpus matrix
+
+The first font-axis pass was lighter-weight on purpose: keep the same corpora and widths, but swap only
+the primary font family for each script and check a small evenly spaced sample of widths.
+
+Tooling added:
+- `/corpus` now accepts `font=` and `lineHeight=` overrides for controlled browser-side checks
+- `bun run corpus-check ... --font='20px ...' --lineHeight=32`
+- `bun run corpus-sweep ... --font='20px ...' --lineHeight=32`
+- `bun run corpus-font-matrix --id=<corpus> --samples=5`
+
+What we sampled in Chrome:
+- Korean: `Apple SD Gothic Neo`, `AppleMyungjo`
+- Thai: `Thonburi`, `Ayuthaya`
+- Khmer: `Khmer Sangam MN`, `Khmer MN`
+- Hindi: `Kohinoor Devanagari`, `Devanagari Sangam MN`, `ITF Devanagari`
+- Arabic: `Geeza Pro`, `SF Arabic`, `Arial`
+- Hebrew: `Times New Roman`, `SF Hebrew`
+
+Result:
+- every sampled variant stayed exact (`5/5`) on this machine
+
+Interpretation:
+- font fragility is not gone, but it is less immediate than expected for the current corpora
+- the next blind spots are more likely new script classes, finer width sweeps, or product-shaped mixed text
+- Safari matrix automation is slower/noisier than Chrome here, so Chrome sampled sweeps are the better first pass;
+  Safari is still useful as a narrower follow-up smoke check
+
 Headless (HarfBuzz, Arial Unicode):
 - 1920/1920 (100%) word-sum vs full-line measurement
 - Algorithm is exact under the headless HarfBuzz backend; the browser sweeps are now also clean on fresh runs.
