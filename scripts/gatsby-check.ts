@@ -1,4 +1,10 @@
-import { execFileSync, spawn } from 'node:child_process'
+import { type ChildProcess } from 'node:child_process'
+import {
+  createBrowserSession,
+  ensurePageServer,
+  loadHashReport,
+  type BrowserKind,
+} from './browser-automation.ts'
 
 type GatsbyLineMismatch = {
   line: number
@@ -88,93 +94,11 @@ const widths = process.argv.slice(2)
 
 const targetWidths = widths.length > 0 ? widths : [300, 400, 600, 800]
 const port = Number.parseInt(process.env['GATSBY_CHECK_PORT'] ?? '3210', 10)
-const baseUrl = `http://localhost:${port}/gatsby`
-const browser = (process.env['GATSBY_CHECK_BROWSER'] ?? 'chrome').toLowerCase()
+const browser = (process.env['GATSBY_CHECK_BROWSER'] ?? 'chrome').toLowerCase() as BrowserKind
 const diagnosticMode = browser === 'safari' ? 'light' : 'full'
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-async function canReachServer(): Promise<boolean> {
-  try {
-    const response = await fetch(baseUrl)
-    return response.ok
-  } catch {
-    return false
-  }
-}
-
-async function waitForServer(): Promise<void> {
-  for (let i = 0; i < 200; i++) {
-    if (await canReachServer()) return
-    await sleep(100)
-  }
-  throw new Error(`Timed out waiting for local Bun server on ${baseUrl}`)
-}
-
-function navigateBrowser(url: string): void {
-  if (browser === 'safari') {
-    execFileSync('osascript', [
-      '-e',
-      'tell application "Safari" to activate',
-      '-e',
-      'tell application "Safari" to if (count of windows) = 0 then make new document',
-      '-e',
-      `tell application "Safari" to set URL of current tab of front window to ${JSON.stringify(url)}`,
-    ], { encoding: 'utf8' })
-    return
-  }
-
-  execFileSync('osascript', [
-    '-e',
-    'tell application "Google Chrome" to activate',
-    '-e',
-    'tell application "Google Chrome" to if (count of windows) = 0 then make new window',
-    '-e',
-    `tell application "Google Chrome" to set URL of active tab of front window to ${JSON.stringify(url)}`,
-  ], { encoding: 'utf8' })
-}
-
-function readBrowserReportText(): string {
-  try {
-    if (browser === 'safari') {
-      const url = execFileSync('osascript', [
-        '-e',
-        'tell application "Safari" to get URL of current tab of front window',
-      ], { encoding: 'utf8' }).trim()
-      const hashIndex = url.indexOf('#report=')
-      if (hashIndex === -1) return ''
-      return decodeURIComponent(url.slice(hashIndex + '#report='.length))
-    }
-
-    return execFileSync('osascript', [
-      '-e',
-      'tell application "Google Chrome" to execute active tab of front window javascript "(() => { const el = document.getElementById(\'gatsby-report\'); return el && el.dataset.ready === \'1\' && el.textContent ? el.textContent : \'\'; })()"',
-    ], { encoding: 'utf8' }).trim()
-  } catch {
-    return ''
-  }
-}
-
-async function loadBrowserReport(url: string, expectedRequestId: string): Promise<GatsbyReport> {
-  navigateBrowser(url)
-
-  for (let i = 0; i < 600; i++) {
-    await sleep(100)
-    const reportJson = readBrowserReportText()
-    if (reportJson === '' || reportJson === 'null') continue
-
-    const report = JSON.parse(reportJson) as GatsbyReport
-    if (report.requestId === expectedRequestId) {
-      return report
-    }
-  }
-
-  throw new Error(`Timed out waiting for Gatsby report from ${browser}`)
-}
-
-function formatWidth(width: number): string {
+function formatWidth(width: number | undefined): string {
+  if (width === undefined || !Number.isFinite(width)) return '?'
   return width.toFixed(3).replace(/\.?0+$/, '')
 }
 
@@ -225,13 +149,13 @@ function printReport(report: GatsbyReport): void {
     console.log(
       `  widths: max ${formatWidth(mismatch.contentWidth)} | ours sum/content/raw ${formatWidth(mismatch.oursSumWidth)}/${formatWidth(mismatch.oursFullWidth)}/${formatWidth(mismatch.oursRawWidth)} | browser content-dom/content/raw-dom/raw ${formatWidth(mismatch.browserDomWidth)}/${formatWidth(mismatch.browserFullWidth)}/${formatWidth(mismatch.browserRawDomWidth)}/${formatWidth(mismatch.browserRawWidth)}`,
     )
-    console.log(`  ours boundary:    ${mismatch.oursBoundary.description}`)
-    console.log(`  browser boundary: ${mismatch.browserBoundary.description}`)
-    console.log(`  ours:    ${mismatch.oursContext}`)
-    console.log(`  browser: ${mismatch.browserContext}`)
-    if (mismatch.segmentWindow.length > 0) {
+    console.log(`  ours boundary:    ${mismatch.oursBoundary?.description ?? '?'}`)
+    console.log(`  browser boundary: ${mismatch.browserBoundary?.description ?? '?'}`)
+    console.log(`  ours:    ${mismatch.oursContext ?? '?'}`)
+    console.log(`  browser: ${mismatch.browserContext ?? '?'}`)
+    if ((mismatch.segmentWindow?.length ?? 0) > 0) {
       console.log('  segments:')
-      for (const segment of mismatch.segmentWindow) {
+      for (const segment of mismatch.segmentWindow!) {
         const kind = [
           segment.isSpace ? 'space' : 'text',
           segment.breakable ? 'breakable' : 'fixed',
@@ -248,25 +172,21 @@ function printReport(report: GatsbyReport): void {
   }
 }
 
-let serverProcess: ReturnType<typeof spawn> | null = null
+let serverProcess: ChildProcess | null = null
+const session = createBrowserSession(browser)
 
 try {
-  if (!(await canReachServer())) {
-    serverProcess = spawn('/bin/zsh', ['-lc', `bun --port=${port} --no-hmr pages/*.html`], {
-      cwd: process.cwd(),
-      stdio: 'ignore',
-    })
-    await waitForServer()
-  }
+  const pageServer = await ensurePageServer(port, '/gatsby', process.cwd())
+  serverProcess = pageServer.process
+  const baseUrl = `${pageServer.baseUrl}/gatsby`
 
   for (const width of targetWidths) {
     const requestId = `${Date.now()}-${width}-${Math.random().toString(36).slice(2, 8)}`
     const url = `${baseUrl}?report=1&diagnostic=${diagnosticMode}&width=${width}&requestId=${requestId}`
-    const report = await loadBrowserReport(url, requestId)
+    const report = await loadHashReport<GatsbyReport>(session, url, requestId, browser)
     printReport(report)
   }
 } finally {
-  if (serverProcess !== null) {
-    serverProcess.kill('SIGTERM')
-  }
+  session.close()
+  serverProcess?.kill('SIGTERM')
 }

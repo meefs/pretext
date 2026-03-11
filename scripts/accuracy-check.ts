@@ -1,9 +1,15 @@
-import { execFileSync, spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { createServer as createHttpServer, type Server as HttpServer } from 'node:http'
 import { createConnection, createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import {
+  createBrowserSession,
+  ensurePageServer,
+  loadHashReport,
+  type BrowserKind,
+} from './browser-automation.ts'
 
 type AccuracyMismatch = {
   label: string
@@ -46,7 +52,7 @@ type AccuracyReport = {
   message?: string
 }
 
-const browser = (process.env['ACCURACY_CHECK_BROWSER'] ?? 'chrome').toLowerCase()
+const browser = (process.env['ACCURACY_CHECK_BROWSER'] ?? 'chrome').toLowerCase() as BrowserKind | 'firefox'
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -144,50 +150,6 @@ async function startProxyServer(targetOrigin: string): Promise<{ baseUrl: string
   })
 
   return { baseUrl: `http://127.0.0.1:${port}/accuracy`, server }
-}
-
-function navigateBrowser(url: string): void {
-  if (browser === 'safari') {
-    execFileSync('osascript', [
-      '-e',
-      'tell application "Safari" to activate',
-      '-e',
-      'tell application "Safari" to if (count of windows) = 0 then make new document',
-      '-e',
-      `tell application "Safari" to set URL of current tab of front window to ${JSON.stringify(url)}`,
-    ], { encoding: 'utf8' })
-    return
-  }
-
-  execFileSync('osascript', [
-    '-e',
-    'tell application "Google Chrome" to activate',
-    '-e',
-    'tell application "Google Chrome" to if (count of windows) = 0 then make new window',
-    '-e',
-    `tell application "Google Chrome" to set URL of active tab of front window to ${JSON.stringify(url)}`,
-  ], { encoding: 'utf8' })
-}
-
-function readBrowserReportText(): string {
-  try {
-    if (browser === 'safari') {
-      const url = execFileSync('osascript', [
-        '-e',
-        'tell application "Safari" to get URL of current tab of front window',
-      ], { encoding: 'utf8' }).trim()
-      const hashIndex = url.indexOf('#report=')
-      if (hashIndex === -1) return ''
-      return decodeURIComponent(url.slice(hashIndex + '#report='.length))
-    }
-
-    return execFileSync('osascript', [
-      '-e',
-      'tell application "Google Chrome" to execute active tab of front window javascript "(() => { const el = document.getElementById(\'accuracy-report\'); return el && el.dataset.ready === \'1\' && el.textContent ? el.textContent : \'\'; })()"',
-    ], { encoding: 'utf8' }).trim()
-  } catch {
-    return ''
-  }
 }
 
 type BidiResponse = {
@@ -318,21 +280,12 @@ async function loadBrowserReport(url: string, expectedRequestId: string): Promis
   if (browser === 'firefox') {
     return await loadFirefoxReport(url, expectedRequestId)
   }
-
-  navigateBrowser(url)
-
-  for (let i = 0; i < 1200; i++) {
-    await sleep(100)
-    const reportJson = readBrowserReportText()
-    if (reportJson === '' || reportJson === 'null') continue
-
-    const report = JSON.parse(reportJson) as AccuracyReport
-    if (report.requestId === expectedRequestId) {
-      return report
-    }
+  const session = createBrowserSession(browser)
+  try {
+    return await loadHashReport<AccuracyReport>(session, url, expectedRequestId, browser)
+  } finally {
+    session.close()
   }
-
-  throw new Error(`Timed out waiting for accuracy report from ${browser}`)
 }
 
 function formatDiff(diff: number): string {
@@ -369,24 +322,29 @@ function printReport(report: AccuracyReport): void {
   }
 }
 
-let serverProcess: ReturnType<typeof spawn> | null = null
+let serverProcess: ChildProcess | null = null
 let proxyServer: HttpServer | null = null
 
 try {
-  const bunPort = await getAvailablePort()
-  const bunBaseUrl = `http://localhost:${bunPort}/accuracy`
+  let baseUrl: string
 
-  serverProcess = spawn('/bin/zsh', ['-lc', `bun --port=${bunPort} --no-hmr pages/*.html`], {
-    cwd: process.cwd(),
-    stdio: 'ignore',
-  })
-  await waitForServer(bunBaseUrl)
-
-  let baseUrl = bunBaseUrl
   if (browser === 'firefox') {
+    const bunPort = await getAvailablePort()
+    const bunBaseUrl = `http://localhost:${bunPort}/accuracy`
+    serverProcess = spawn('/bin/zsh', ['-lc', `bun --port=${bunPort} --no-hmr pages/*.html`], {
+      cwd: process.cwd(),
+      stdio: 'ignore',
+    })
+    await waitForServer(bunBaseUrl)
+
     const proxy = await startProxyServer(`http://[::1]:${bunPort}`)
     proxyServer = proxy.server
     baseUrl = proxy.baseUrl
+  } else {
+    const port = Number.parseInt(process.env['ACCURACY_CHECK_PORT'] ?? '3210', 10)
+    const pageServer = await ensurePageServer(port, '/accuracy', process.cwd())
+    serverProcess = pageServer.process
+    baseUrl = `${pageServer.baseUrl}/accuracy`
   }
 
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
