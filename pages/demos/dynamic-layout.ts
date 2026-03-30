@@ -147,8 +147,8 @@ type DomCache = {
   credit: HTMLParagraphElement // cache lifetime: page
   openaiLogo: HTMLImageElement // cache lifetime: page
   claudeLogo: HTMLImageElement // cache lifetime: page
-  headlineLines: HTMLDivElement[] // cache lifetime: headline line count
-  bodyLines: HTMLDivElement[] // cache lifetime: visible line count
+  headlineLines: HTMLSpanElement[] // cache lifetime: headline line count
+  bodyLines: HTMLSpanElement[] // cache lifetime: visible line count
 }
 
 const preparedByKey = new Map<string, PreparedTextWithSegments>()
@@ -354,7 +354,7 @@ function syncPool<T extends HTMLElement>(pool: T[], length: number, create: () =
 
 function projectHeadlineLines(lines: PositionedLine[], font: string, lineHeight: number): void {
   syncPool(domCache.headlineLines, lines.length, () => {
-    const element = document.createElement('div')
+    const element = document.createElement('span')
     element.className = 'headline-line'
     return element
   }, domCache.headline)
@@ -454,7 +454,7 @@ function projectTextProjection(projection: TextProjection): void {
   domCache.credit.style.lineHeight = `${CREDIT_LINE_HEIGHT}px`
 
   syncPool(domCache.bodyLines, projection.bodyLines.length, () => {
-    const element = document.createElement('div')
+    const element = document.createElement('span')
     element.className = 'line'
     return element
   })

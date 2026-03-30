@@ -298,9 +298,9 @@ dropCapEl.style.font = DROP_CAP_FONT
 dropCapEl.style.lineHeight = `${DROP_CAP_SIZE}px`
 stage.appendChild(dropCapEl)
 
-const linePool: HTMLDivElement[] = []
-const headlinePool: HTMLDivElement[] = []
-const pullquoteLinePool: HTMLDivElement[] = []
+const linePool: HTMLSpanElement[] = []
+const headlinePool: HTMLSpanElement[] = []
+const pullquoteLinePool: HTMLSpanElement[] = []
 const pullquoteBoxPool: HTMLDivElement[] = []
 const domCache = {
   stage, // cache lifetime: same as page
@@ -335,10 +335,9 @@ const st: AppState = {
 
 let committedTextProjection: TextProjection | null = null
 
-function syncPool(pool: HTMLDivElement[], count: number, className: string): void {
+function syncPool<T extends HTMLElement>(pool: T[], count: number, create: () => T): void {
   while (pool.length < count) {
-    const element = document.createElement('div')
-    element.className = className
+    const element = create()
     stage.appendChild(element)
     pool.push(element)
   }
@@ -544,7 +543,11 @@ function textProjectionEqual(a: TextProjection | null, b: TextProjection): boole
 }
 
 function projectTextProjection(projection: TextProjection): void {
-  syncPool(domCache.headlineLines, projection.headlineLines.length, 'headline-line')
+  syncPool(domCache.headlineLines, projection.headlineLines.length, () => {
+    const element = document.createElement('span')
+    element.className = 'headline-line'
+    return element
+  })
   for (let index = 0; index < projection.headlineLines.length; index++) {
     const element = domCache.headlineLines[index]!
     const line = projection.headlineLines[index]!
@@ -555,7 +558,11 @@ function projectTextProjection(projection: TextProjection): void {
     element.style.lineHeight = `${projection.headlineLineHeight}px`
   }
 
-  syncPool(domCache.bodyLines, projection.bodyLines.length, 'line')
+  syncPool(domCache.bodyLines, projection.bodyLines.length, () => {
+    const element = document.createElement('span')
+    element.className = 'line'
+    return element
+  })
   for (let index = 0; index < projection.bodyLines.length; index++) {
     const element = domCache.bodyLines[index]!
     const line = projection.bodyLines[index]!
@@ -566,7 +573,11 @@ function projectTextProjection(projection: TextProjection): void {
     element.style.lineHeight = `${projection.bodyLineHeight}px`
   }
 
-  syncPool(domCache.pullquoteLines, projection.pullquoteLines.length, 'pullquote-line')
+  syncPool(domCache.pullquoteLines, projection.pullquoteLines.length, () => {
+    const element = document.createElement('span')
+    element.className = 'pullquote-line'
+    return element
+  })
   for (let index = 0; index < projection.pullquoteLines.length; index++) {
     const element = domCache.pullquoteLines[index]!
     const line = projection.pullquoteLines[index]!
@@ -917,7 +928,11 @@ function render(now: number): boolean {
   domCache.dropCap.style.left = `${column0X}px`
   domCache.dropCap.style.top = `${bodyTop}px`
 
-  syncPool(domCache.pullquoteBoxes, pullquoteRects.length, 'pullquote-box')
+  syncPool(domCache.pullquoteBoxes, pullquoteRects.length, () => {
+    const element = document.createElement('div')
+    element.className = 'pullquote-box'
+    return element
+  })
 
   for (let index = 0; index < pullquoteRects.length; index++) {
     const pullquote = pullquoteRects[index]!
