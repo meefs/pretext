@@ -57,3 +57,142 @@ export const TEXTS = [
 export const SIZES = [12, 14, 15, 16, 18, 20, 24, 28] as const
 
 export const WIDTHS = [150, 200, 250, 300, 350, 400, 500, 600] as const
+
+export type LetterSpacingOracleCase = {
+  label: string
+  text: string
+  width: number
+  font: string
+  lineHeight: number
+  letterSpacing: number
+  whiteSpace?: 'normal' | 'pre-wrap'
+  wordBreak?: 'normal' | 'keep-all'
+  dir?: 'ltr' | 'rtl'
+  lang?: string
+  method?: 'range' | 'span'
+}
+
+export const LETTER_SPACING_ORACLE_CASES: readonly LetterSpacingOracleCase[] = [
+  {
+    label: 'latin segment gaps',
+    text: 'Alpha beta gamma',
+    width: 170,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 1.5,
+  },
+  {
+    label: 'negative tracking',
+    text: 'The quick brown fox jumps',
+    width: 150,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: -0.8,
+  },
+  {
+    label: 'overflow grapheme breaks',
+    text: 'Supercalifragilistic',
+    width: 135,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 2,
+  },
+  {
+    label: 'latin trailing fit gap',
+    text: 'abcd',
+    width: 120,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 1.5,
+  },
+  {
+    label: 'combining graphemes',
+    text: 'Cafe\u0301 naive',
+    width: 120,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 1.5,
+    method: 'span',
+  },
+  {
+    label: 'cjk boundaries',
+    text: '春天到了中文测试',
+    width: 210,
+    font: '20px serif',
+    lineHeight: 34,
+    letterSpacing: 2,
+    lang: 'zh',
+  },
+  {
+    label: 'emoji graphemes',
+    text: 'A😀🎉B wraps',
+    width: 155,
+    font: '20px serif',
+    lineHeight: 34,
+    letterSpacing: 1.5,
+  },
+  {
+    label: 'digits and punctuation',
+    text: '24×7, 7:00-9:00?',
+    width: 175,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 1.25,
+  },
+  {
+    label: 'arabic rtl punctuation',
+    text: 'مرحبا، عالم؟',
+    width: 150,
+    font: '20px serif',
+    lineHeight: 34,
+    letterSpacing: 1,
+    dir: 'rtl',
+    lang: 'ar',
+  },
+  {
+    label: 'mixed bidi trailing fit gap',
+    text: 'abc אבג def',
+    width: 110,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 1.5,
+    lang: 'he',
+  },
+  {
+    label: 'pre-wrap hard breaks',
+    text: 'foo\nbar baz',
+    width: 170,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 2,
+    whiteSpace: 'pre-wrap',
+  },
+  {
+    label: 'pre-wrap preserved spaces',
+    text: 'foo    bar',
+    width: 150,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 1.25,
+    whiteSpace: 'pre-wrap',
+    method: 'span',
+  },
+  {
+    label: 'soft hyphen',
+    text: 'trans\u00ADatlantic transit',
+    width: 150,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 1.5,
+  },
+  {
+    label: 'keep-all mixed cjk',
+    text: '日本語foo-bar',
+    width: 170,
+    font: '18px serif',
+    lineHeight: 32,
+    letterSpacing: 1,
+    wordBreak: 'keep-all',
+    lang: 'ja',
+  },
+]
